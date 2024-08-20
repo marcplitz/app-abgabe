@@ -12,7 +12,7 @@
       <!-- Container for the map -->    
       <div class="map-container">
         <l-map ref="map" :zoom="zoom" :center="mapCenter" @update:center="centerUpdate" @update:zoom="zoomUpdate" @ready="onMapReady" :use-global-leaflet="false">
-          <l-tile-layer
+          <l-tile-layer 
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             layer-type="base"
             name="OpenStreetMap"
@@ -23,7 +23,6 @@
           </l-marker>
         </l-map>
       </div>
-
 
       <!-- Button for location retrieval -->
       <div class="location-container">
