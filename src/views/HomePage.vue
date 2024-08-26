@@ -50,6 +50,7 @@ import { LMap, LTileLayer, LMarker } from "@vue-leaflet/vue-leaflet";
 import { IonContent, IonList, IonItem, IonLabel, IonInput, IonButton, IonProgressBar } from "@ionic/vue"
 import { latLng, icon, Map } from "leaflet"
 import { Geolocation } from '@capacitor/geolocation';
+//const { Geolocation } = Plugins;
 
 export default {
   components: {
@@ -63,7 +64,7 @@ export default {
     IonButton,
     IonProgressBar
   },
-  // Data properties for the component
+
   data() {
     return {
       zoom: 2,
@@ -99,16 +100,20 @@ export default {
       }),
     };
   },
-  
-  // Lifecycle hook called when the component is mounted
   mounted() {
     let storage = localStorage.getItem("storagePosData");
     let mapSettings = localStorage.getItem("mapSettings");
 
     if (storage !== null) {
       this.storageData = JSON.parse(storage);
+
+      // Marker setzen
       this.markerUpdate(latLng(this.storageData.searchPos.lat, this.storageData.searchPos.lon));
       this.markerUpdateCurrentPosition(latLng(this.storageData.currentPos.lat, this.storageData.currentPos.lon));
+
+      // Automatisch adjustMapView aufrufen, wenn beide Positionen bekannt sind
+      // Wenn ich adjustMapViewIfNeeded() wieder einkommentiere im kompletten code, dann wird automatisch gezoomt, wenn beide Positionen bekannt sind
+      // this.adjustMapViewIfNeeded();
     }
 
     if (mapSettings !== null) {
@@ -118,19 +123,24 @@ export default {
     }
   },
   methods: {
+
     onMapReady(mapInstance: Map) {
       this.map = mapInstance;
+
+      // Karte nur anpassen, wenn gespeicherte Positionen vorhanden sind
       let storage = localStorage.getItem("storagePosData");
       let mapSettings = localStorage.getItem("mapSettings");
 
       if (mapSettings !== null) {
         const savedSettings = JSON.parse(mapSettings);
         this.map.setView(latLng(savedSettings.center.lat, savedSettings.center.lng), savedSettings.zoom);
-      } else if (storage !== null) 
+      } else if (storage !== null) {
+        // this.adjustMapViewIfNeeded();
+      }
+
+      // Listener für das Speichern der Einstellungen bei Änderung der Karte
       this.map.on('moveend', this.saveMapSettings);
     },
-
-  // Method to search for a location using the OpenStreetMap API
   searchLocationOnMap() {
     let places = [];
     let searchKey = this.searchLocation
@@ -144,14 +154,17 @@ export default {
           }).then((response) => {
             return response.json();
           }).then((data) => {
+            console.log(data[0])
             let coords = {
             lat: data[0].lat,
             lon: data[0].lon
             }
+            console.log(coords)
             this.markerUpdate(latLng(coords.lat, coords.lon))
             this.centerUpdate(latLng(coords.lat, coords.lon))
-            this.zoomUpdate(10)
+            this.zoomUpdate(15)
             this.storageData.searchPos = coords
+            console.log(this.storageData)
             localStorage.setItem("storagePosData", JSON.stringify(this.storageData));
             this.isLoading = false;
             console.log('Marker für die Suche:', this.markerLatLng);
@@ -160,17 +173,16 @@ export default {
           })
     }
     },
-  // Method to check location permissions  
+    
   checkPermissions() {
     return Geolocation.checkPermissions();
   },
-  // Method to request location permissions
   requestPermissions(permissions) {
     return Geolocation.requestPermissions(permissions);
   },
 
-  // Method to get the user's current location
   getLocationOnMap() {
+
     this.checkPermissions();
     this.requestPermissions({
       android: {
@@ -178,21 +190,33 @@ export default {
         accessCoarseLocation: true
       }
     });
+
     this.isLoading = true
+
     const printCurrentPosition = async () => {
       const coordinates = await Geolocation.getCurrentPosition();
       console.log('Current position:', coordinates);
     };
     printCurrentPosition();
+
     Geolocation.getCurrentPosition().then(position => {
       const currentPosition = {
         lat: position.coords.latitude,
         lon: position.coords.longitude
       };
+
+    // navigator.geolocation.getCurrentPosition(position => {
+    // const currentPosition = {
+    //   lat: position.coords.latitude,
+    //   lon: position.coords.longitude
+    // };
+
+    console.log(currentPosition);
     this.markerUpdateCurrentPosition(latLng(currentPosition.lat, currentPosition.lon))
     this.centerUpdate(latLng(currentPosition.lat, currentPosition.lon))
     this.zoomUpdate(15)
     this.storageData.currentPos = currentPosition
+    console.log(currentPosition)
     localStorage.setItem("storagePosData", JSON.stringify(this.storageData));
     this.isLoading = false
     console.log('Marker für die Suche:', this.markerLatLng);
@@ -200,7 +224,7 @@ export default {
     console.log('gespeicherte Daten', this.storageData);
   });
   },
-  // Adjust the map view to fit both the current and search positions with padding
+
   adjustMapView() {
     if (this.map) {
       this.map.fitBounds([[this.storageData.currentPos.lat, this.storageData.currentPos.lon],
@@ -208,16 +232,14 @@ export default {
       {padding: [100, 100]});
     }
     },
-    // Adjust the map view only if both current and search positions are valid (not default 0,0)
+
     adjustMapViewIfNeeded() {
       if (this.storageData.searchPos.lat !== 0 && this.storageData.currentPos.lat !== 0) {
         this.adjustMapView();
       }
     },
 
-// Save the current map center and zoom level to local storage
   saveMapSettings() {
-    
       if (this.map) {
         const mapSettings = {
           center: this.map.getCenter(),
@@ -226,21 +248,19 @@ export default {
         localStorage.setItem("mapSettings", JSON.stringify(mapSettings));
       }
     },
-  // Update the map center position
+
   centerUpdate(center) {
     this.mapCenter = center;
   },
-  // Update the map zoom level
   zoomUpdate(zoom){
     this.zoom = zoom;
   },
-  // Update the marker position for the searched location
   markerUpdate(markerLatLng){
     this.markerLatLng = markerLatLng;
   },
-  // Update the marker position for the user's current location
   markerUpdateCurrentPosition(markerCurrentPosition){
     this.markerCurrentPosition = markerCurrentPosition;
+    // this.adjustMapViewIfNeeded();
   }
 
   },
